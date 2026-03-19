@@ -1,0 +1,44 @@
+name: Daily S&P 500 Research Pipeline
+
+on:
+  schedule:
+    - cron: "0 13 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  predict:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install yfinance lightgbm scikit-learn pandas numpy tqdm matplotlib \
+                      joblib "qrcode[pil]" requests feedparser \
+                      beautifulsoup4 lxml ta optuna transformers torch accelerate
+
+      - name: Run pipeline
+        run: python pipeline.py
+        env:
+          PYTHONUNBUFFERED: 1
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_USERNAME: ${{ github.repository_owner }}
+          GITHUB_REPO: ${{ github.event.repository.name }}
+
+      - name: Push updated predictions to GitHub Pages
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name  "GitHub Actions"
+          git add docs/ predictions/ models/
+          git diff --staged --quiet || (
+            git commit -m "Daily update $(date +%Y-%m-%d)" && git push
+          )
