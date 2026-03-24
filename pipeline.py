@@ -28,14 +28,6 @@ Original file is located at
 3. Set `GITHUB_USERNAME` and `GITHUB_REPO` in Section 2
 4. Run all (Ctrl+F9)
 
-## Section 1 — Install Dependencies
-"""
-
-!pip install -q yfinance lightgbm scikit-learn pandas numpy tqdm matplotlib \
-    joblib "qrcode[pil]" requests feedparser \
-    beautifulsoup4 lxml ta optuna transformers torch accelerate
-print("Dependencies installed.")
-
 """## Section 2 — Configuration  ← EDIT BEFORE RUNNING"""
 
 # --- GitHub (token stored in Colab Secrets, not in code) ---
