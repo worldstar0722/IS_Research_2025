@@ -2,8 +2,8 @@ name: Daily S&P 500 Research Pipeline
 
 on:
   schedule:
-    - cron: "0 13 * * 1-5"
-  workflow_dispatch:
+    - cron: "0 13 * * 1-5"   # 9am ET, Mon-Fri only
+  workflow_dispatch:           # allow manual trigger from GitHub UI
 
 permissions:
   contents: write
@@ -14,9 +14,13 @@ jobs:
     timeout-minutes: 120
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # full history needed for rebase
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
@@ -24,7 +28,8 @@ jobs:
         run: |
           pip install yfinance lightgbm scikit-learn pandas numpy tqdm matplotlib \
                       joblib "qrcode[pil]" requests feedparser \
-                      beautifulsoup4 lxml ta optuna transformers torch accelerate
+                      beautifulsoup4 lxml ta optuna transformers torch accelerate \
+                      pyarrow
 
       - name: Run pipeline
         run: python pipeline.py
@@ -38,7 +43,9 @@ jobs:
         run: |
           git config user.email "actions@github.com"
           git config user.name  "GitHub Actions"
+          git stash
           git pull --rebase origin main
+          git stash pop
           git add docs/ predictions/ models/
           git diff --staged --quiet || (
             git commit -m "Daily update $(date +%Y-%m-%d)" && git push
