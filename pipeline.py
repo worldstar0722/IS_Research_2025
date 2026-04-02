@@ -141,16 +141,6 @@ def get_sp500() -> List[Tuple[str, str]]:
             "CRM","NFLX","AMD","TXN","DHR","QCOM","NKE","LOW","INTU",
         ]
         return [(t, t) for t in fallback]
-
-ALL_TICKERS = get_sp500()
-if TEST_COUNT:
-    ALL_TICKERS = ALL_TICKERS[:TEST_COUNT]
-    print(f"Speed mode: using {TEST_COUNT} tickers")
-else:
-    print(f"Full S&P 500: {len(ALL_TICKERS)} tickers")
-
-TICKER_NAME = dict(ALL_TICKERS)
-
 # ================================================================
 # Section 5 — Feature Engineering (35 Technical Indicators)
 # ================================================================
