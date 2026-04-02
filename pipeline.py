@@ -124,23 +124,68 @@ else:
 # ================================================================
 
 def get_sp500() -> List[Tuple[str, str]]:
-    """Fetch (symbol, company_name) pairs from Wikipedia."""
-    url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+    """
+    Fetch S&P 500 (symbol, company_name) pairs.
+    Tries three sources in order:
+      1. Local CSV file committed to the repo (fastest, no network)
+      2. datahub.io CSV (stable public API)
+      3. Wikipedia HTML table (original source)
+    Falls back to a hardcoded 40-ticker list if all sources fail.
+    """
+    # ── 1st: Local CSV (most reliable in CI) ─────────────────────
+    csv_path = Path("sp500_tickers.csv")
+    if csv_path.exists():
+        try:
+            df    = pd.read_csv(csv_path)
+            syms  = df["Symbol"].str.replace(".", "-", regex=False).tolist()
+            names = df.get("Name", pd.Series(syms)).tolist()
+            print(f"S&P 500 loaded from local CSV: {len(syms)} tickers")
+            return list(zip(syms, names))
+        except Exception as e:
+            print(f"Local CSV read failed ({e}) — trying network sources")
+
+    # ── 2nd: datahub.io CSV ───────────────────────────────────────
     try:
-        r  = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
-        df = pd.read_html(r.text)[0]
+        r = requests.get(
+            "https://datahub.io/core/s-and-p-500-companies/r/constituents.csv",
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=20,
+        )
+        r.raise_for_status()
+        from io import StringIO
+        df    = pd.read_csv(StringIO(r.text))
         syms  = df["Symbol"].str.replace(".", "-", regex=False).tolist()
-        names = df.get("Security", pd.Series(syms)).tolist()
+        names = df.get("Name", pd.Series(syms)).tolist()
+        print(f"S&P 500 loaded from datahub.io: {len(syms)} tickers")
         return list(zip(syms, names))
     except Exception as e:
-        print(f"Wikipedia fetch failed ({e}) — using fallback list")
-        fallback = [
-            "AAPL","MSFT","NVDA","AMZN","GOOGL","META","TSLA","BRK-B","JPM","V",
-            "WMT","XOM","UNH","MA","HD","LLY","CVX","ABBV","PG","BAC","MRK",
-            "COST","AVGO","PEP","KO","CSCO","TMO","ACN","MCD","ABT","ADBE",
-            "CRM","NFLX","AMD","TXN","DHR","QCOM","NKE","LOW","INTU",
-        ]
-        return [(t, t) for t in fallback]
+        print(f"datahub.io fetch failed ({e}) — trying Wikipedia")
+
+    # ── 3rd: Wikipedia HTML table ─────────────────────────────────
+    try:
+        r = requests.get(
+            "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies",
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=30,
+        )
+        r.raise_for_status()
+        df    = pd.read_html(r.text)[0]
+        syms  = df["Symbol"].str.replace(".", "-", regex=False).tolist()
+        names = df.get("Security", pd.Series(syms)).tolist()
+        print(f"S&P 500 loaded from Wikipedia: {len(syms)} tickers")
+        return list(zip(syms, names))
+    except Exception as e:
+        print(f"Wikipedia fetch failed ({e}) — using hardcoded fallback")
+
+    # ── Final fallback: hardcoded list ────────────────────────────
+    fallback = [
+        "AAPL","MSFT","NVDA","AMZN","GOOGL","META","TSLA","BRK-B","JPM","V",
+        "WMT","XOM","UNH","MA","HD","LLY","CVX","ABBV","PG","BAC","MRK",
+        "COST","AVGO","PEP","KO","CSCO","TMO","ACN","MCD","ABT","ADBE",
+        "CRM","NFLX","AMD","TXN","DHR","QCOM","NKE","LOW","INTU",
+    ]
+    print(f"WARNING: All sources failed. Running on {len(fallback)} hardcoded tickers only.")
+    return [(t, t) for t in fallback]
 # ================================================================
 # Section 5 — Feature Engineering (35 Technical Indicators)
 # ================================================================
