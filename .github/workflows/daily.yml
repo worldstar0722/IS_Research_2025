@@ -38,6 +38,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USERNAME: ${{ github.repository_owner }}
           GITHUB_REPO: ${{ github.event.repository.name }}
+          INCREMENTAL: "true"    # reuse cached price data — only fetch new trading days
 
       - name: Push updated predictions to GitHub Pages
         run: |
