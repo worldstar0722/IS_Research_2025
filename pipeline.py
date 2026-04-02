@@ -10,6 +10,8 @@ Changes from original Colab notebook:
   - Added SPEED_MODE: runs on 1-2 days of data with fewer tickers for quick testing
   - Added INCREMENTAL mode: only downloads new data each day, merges with cache
   - Removed IPython.display calls (not available in GitHub Actions)
+  - get_sp500() now tries 3 sources: local CSV → datahub.io → Wikipedia → hardcoded fallback
+    Commit sp500_tickers.csv to repo root to avoid all network dependency for ticker loading
 """
 
 import os, json, time, base64, warnings, logging, urllib.parse
@@ -44,10 +46,10 @@ TRAIN_YEARS = 5
 CUTOFF_DATE = "2025-12-01"   # rows before = train, rows after = test
 
 if SPEED_MODE:
-    TRAIN_YEARS     = 0
-    START_OVERRIDE  = (datetime.today() - timedelta(days=SPEED_DAYS)).strftime("%Y-%m-%d")
+    TRAIN_YEARS    = 0
+    START_OVERRIDE = (datetime.today() - timedelta(days=SPEED_DAYS)).strftime("%Y-%m-%d")
 else:
-    START_OVERRIDE  = None
+    START_OVERRIDE = None
 
 # --- News / Sentiment ---
 USE_NEWS       = not SPEED_MODE   # FinBERT disabled in Speed Mode
@@ -121,6 +123,17 @@ else:
 
 # ================================================================
 # Section 4 — Load S&P 500 Ticker List
+#
+# Tries three sources in order:
+#   1. sp500_tickers.csv committed to the repo root  ← fastest, no network needed
+#   2. datahub.io public CSV                          ← stable fallback
+#   3. Wikipedia HTML table                            ← original source
+#   4. Hardcoded 40-ticker list                        ← last resort
+#
+# HOW TO USE THE LOCAL CSV:
+#   git add sp500_tickers.csv
+#   git commit -m "Add S&P 500 ticker list CSV"
+#   git push
 # ================================================================
 
 def get_sp500() -> List[Tuple[str, str]]:
@@ -186,6 +199,17 @@ def get_sp500() -> List[Tuple[str, str]]:
     ]
     print(f"WARNING: All sources failed. Running on {len(fallback)} hardcoded tickers only.")
     return [(t, t) for t in fallback]
+
+
+ALL_TICKERS = get_sp500()
+if TEST_COUNT:
+    ALL_TICKERS = ALL_TICKERS[:TEST_COUNT]
+    print(f"Speed mode: using {TEST_COUNT} tickers")
+else:
+    print(f"Full S&P 500: {len(ALL_TICKERS)} tickers")
+
+TICKER_NAME = dict(ALL_TICKERS)
+
 # ================================================================
 # Section 5 — Feature Engineering (35 Technical Indicators)
 # ================================================================
@@ -498,7 +522,7 @@ def download_batch(syms: List[str], start: str, end: str) -> Dict[str, pd.DataFr
 cached_prices = load_price_cache()
 
 if INCREMENTAL and cached_prices:
-    latest_cached = max(df.index.max() for df in cached_prices.values() if len(df) > 0)
+    latest_cached  = max(df.index.max() for df in cached_prices.values() if len(df) > 0)
     download_start = (latest_cached + timedelta(days=1)).strftime("%Y-%m-%d")
     print(f"Incremental download: {download_start} → {END}")
 else:
@@ -618,8 +642,8 @@ print(f"Train: {len(X_tr):,}   Test: {len(X_te):,}")
 print(f"Positive rate — train: {y_tr.mean():.2%}  test: {y_te.mean():.2%}")
 
 # Fit imputer + scaler on TRAIN only (no leakage)
-IMP    = SimpleImputer(strategy="median").fit(X_tr)
-SC     = StandardScaler().fit(IMP.transform(X_tr))
+IMP = SimpleImputer(strategy="median").fit(X_tr)
+SC  = StandardScaler().fit(IMP.transform(X_tr))
 
 def prep(X):
     return SC.transform(IMP.transform(X))
@@ -840,7 +864,7 @@ print(f"\n{'='*55}")
 print(f"  LGB   AUC={LGB_METRICS['roc_auc']}  Acc={LGB_METRICS['accuracy']}")
 print(f"  RF    AUC={RF_METRICS['roc_auc']}  Acc={RF_METRICS['accuracy']}")
 print(f"  GB    AUC={GB_METRICS['roc_auc']}  Acc={GB_METRICS['accuracy']}")
-print(f"  ENS   AUC={ENS_METRICS['roc_auc']}  Acc={ENS_METRICS['accuracy']}  ← final signal")
+print(f"  ENS   AUC={ENS_METRICS['roc_auc']}  Acc={ENS_METRICS['accuracy']}  <- final signal")
 print(f"  Weights: {ENS_METRICS['weights']}")
 print(f"{'='*55}")
 
