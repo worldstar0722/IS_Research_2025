@@ -11,13 +11,13 @@ permissions:
 jobs:
   predict:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 360       # 6 hours — enough for full 501-ticker first run
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0        # full history needed for rebase
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -38,7 +38,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USERNAME: ${{ github.repository_owner }}
           GITHUB_REPO: ${{ github.event.repository.name }}
-          INCREMENTAL: "true"    # reuse cached price data — only fetch new trading days
+          INCREMENTAL: "false"   # ← full 501-ticker download to rebuild cache
 
       - name: Push updated predictions to GitHub Pages
         run: |
