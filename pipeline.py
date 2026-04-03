@@ -12,6 +12,9 @@ Changes from original Colab notebook:
   - Removed IPython.display calls (not available in GitHub Actions)
   - get_sp500() now tries 3 sources: local CSV → datahub.io → Wikipedia → hardcoded fallback
     Commit sp500_tickers.csv to repo root to avoid all network dependency for ticker loading
+  - [FIX] USE_NEWS now also controllable via USE_NEWS env var (set to "false" in yml to skip FinBERT)
+  - [FIX] NEWS_BACK_DAYS 14→7, MAX_NEWS_ITEMS 10→5, NEWS_SLEEP 0.1→0.05 to reduce runtime
+  - [FIX] OPTUNA_TRIALS 5→3 to reduce runtime
 """
 
 import os, json, time, base64, warnings, logging, urllib.parse
@@ -52,15 +55,18 @@ else:
     START_OVERRIDE = None
 
 # --- News / Sentiment ---
-USE_NEWS       = not SPEED_MODE   # FinBERT disabled in Speed Mode
-NEWS_BACK_DAYS = 14
-MAX_NEWS_ITEMS = 10
-NEWS_SLEEP     = 0.1
+# [FIX] USE_NEWS can now be disabled via env var USE_NEWS=false in the YML
+#       This avoids 6-hour timeout caused by FinBERT inference on 500+ tickers
+_use_news_env = os.environ.get('USE_NEWS', 'true').lower()
+USE_NEWS       = (_use_news_env == 'true') and not SPEED_MODE
+NEWS_BACK_DAYS = 7    # [FIX] reduced from 14 → saves ~50% news fetch time
+MAX_NEWS_ITEMS = 5    # [FIX] reduced from 10 → fewer FinBERT inference calls
+NEWS_SLEEP     = 0.05 # [FIX] reduced from 0.1 → faster crawling
 
 # --- Model ---
 RANDOM_STATE  = 42
 USE_OPTUNA    = not SPEED_MODE    # Optuna disabled in Speed Mode
-OPTUNA_TRIALS = 5
+OPTUNA_TRIALS = 3                 # [FIX] reduced from 5 → saves ~40% tuning time
 
 # ================================================================
 import numpy as np
@@ -95,6 +101,7 @@ print("=" * 55)
 print(f"Date range    : {START} → {END}")
 print(f"Speed mode    : {SPEED_MODE}  |  Incremental: {INCREMENTAL}")
 print(f"FinBERT       : {USE_NEWS}    |  Optuna: {USE_OPTUNA}")
+print(f"Optuna trials : {OPTUNA_TRIALS}")
 print(f"GitHub Pages  : https://{GITHUB_USERNAME}.github.io/{GITHUB_REPO}")
 print("=" * 55)
 
@@ -355,8 +362,8 @@ def _build_session():
 
 _session = _build_session()
 
-def fetch_headlines_with_dates(query: str, max_items: int = 10,
-                                sleep_s: float = 0.1) -> List[Dict]:
+def fetch_headlines_with_dates(query: str, max_items: int = 5,
+                                sleep_s: float = 0.05) -> List[Dict]:
     """Fetch news headlines with publication dates from Google News RSS."""
     encoded = urllib.parse.quote_plus(query)
     url = f"https://news.google.com/rss/search?q={encoded}&hl=en-US&gl=US&ceid=US:en"
@@ -403,7 +410,7 @@ def finbert_score_batch(texts: List[str], batch_size: int = 16) -> List[float]:
 
 def build_sentiment_series(headlines: List[Dict],
                             date_index: pd.DatetimeIndex,
-                            back_days: int = 14) -> pd.DataFrame:
+                            back_days: int = 7) -> pd.DataFrame:
     """
     Map headline sentiment scores to each price row by date.
     Each row only uses headlines from the past `back_days` before that date — no leakage.
@@ -653,11 +660,6 @@ X_te_s = prep(X_te)
 
 # ================================================================
 # Section 9 — Model Training: LightGBM + RandomForest + GradientBoosting
-#
-# Changes vs original:
-#   - show_progress_bar=False (cleaner GitHub Actions logs)
-#   - Speed mode uses smaller n_estimators (200 / 100 / 100)
-#     so test runs complete in seconds rather than minutes
 # ================================================================
 
 def get_metrics(y_true, y_pred, y_prob) -> Dict:
@@ -702,7 +704,7 @@ if USE_OPTUNA:
     study_lgb = optuna.create_study(direction="maximize",
                                     sampler=optuna.samplers.TPESampler(seed=RANDOM_STATE))
     study_lgb.optimize(lgb_objective, n_trials=OPTUNA_TRIALS,
-                       show_progress_bar=False)   # False = cleaner CI logs
+                       show_progress_bar=False)
     bp = study_lgb.best_params
     best_lgb_params = {
         "objective": "binary", "metric": "binary_logloss", "verbosity": -1,
@@ -722,7 +724,7 @@ else:
         "feature_fraction": 0.8, "bagging_fraction": 0.8, "bagging_freq": 5,
         "reg_alpha": 0.1, "reg_lambda": 0.1,
     }
-    n_est_lgb = 200   # Speed mode default (was 500)
+    n_est_lgb = 200
 
 LGB_MODEL = lgb.train(
     best_lgb_params,
@@ -773,7 +775,7 @@ else:
         ("imp", SimpleImputer(strategy="median")),
         ("sc",  StandardScaler()),
         ("clf", RandomForestClassifier(
-            n_estimators=100,   # Speed mode default (was 400)
+            n_estimators=100,
             max_depth=10, min_samples_leaf=5,
             max_features=0.6, class_weight="balanced",
             random_state=RANDOM_STATE, n_jobs=-1,
@@ -813,7 +815,7 @@ def gb_objective(trial):
 if USE_OPTUNA:
     study_gb = optuna.create_study(direction="maximize",
                                    sampler=optuna.samplers.TPESampler(seed=RANDOM_STATE))
-    study_gb.optimize(gb_objective, n_trials=max(5, OPTUNA_TRIALS//2),
+    study_gb.optimize(gb_objective, n_trials=max(3, OPTUNA_TRIALS//2),
                       show_progress_bar=False)
     bp_gb = study_gb.best_params
     print(f"  Best GB  AUC: {study_gb.best_value:.4f}")
@@ -831,7 +833,7 @@ else:
         ("imp", SimpleImputer(strategy="median")),
         ("sc",  StandardScaler()),
         ("clf", GradientBoostingClassifier(
-            n_estimators=100,   # Speed mode default (was 200)
+            n_estimators=100,
             max_depth=4, learning_rate=0.05,
             subsample=0.8, min_samples_leaf=10, random_state=RANDOM_STATE,
         )),
@@ -1276,11 +1278,6 @@ print(f"Dashboard built: docs/index.html  ({len(html_out)//1024} KB)")
 
 # ================================================================
 # Section 12 — QR Code + Push to GitHub Pages
-#
-# Changes vs original:
-#   - Removed IPython.display (not available in GitHub Actions)
-#   - push_to_github() only runs if GITHUB_TOKEN is present
-#     (GitHub Actions handles the git commit/push separately)
 # ================================================================
 
 import qrcode
