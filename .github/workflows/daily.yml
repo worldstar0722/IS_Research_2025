@@ -11,7 +11,7 @@ permissions:
 jobs:
   predict:
     runs-on: ubuntu-latest
-    timeout-minutes: 360       # 6 hours — enough for full 501-ticker first run
+    timeout-minutes: 360       # 6 hours
 
     steps:
       - name: Checkout repository
@@ -38,7 +38,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USERNAME: ${{ github.repository_owner }}
           GITHUB_REPO: ${{ github.event.repository.name }}
-          INCREMENTAL: "false"   # ← full 501-ticker download to rebuild cache
+          INCREMENTAL: "true"
+          USE_NEWS: "false"    # ← FinBERT 비활성화: 6시간 타임아웃 방지
+                               #   "true"로 바꾸면 FinBERT 감성분석 활성화
+                               #   (단, 실행시간 대폭 증가 → 타임아웃 위험)
 
       - name: Push updated predictions to GitHub Pages
         run: |
