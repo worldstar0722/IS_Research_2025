@@ -38,7 +38,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USERNAME: ${{ github.repository_owner }}
           GITHUB_REPO: ${{ github.event.repository.name }}
-          INCREMENTAL: "true"
+          INCREMENTAL: "false"
           USE_NEWS: "true"     # FinBERT sentiment enabled (parallel crawl + batch inference)
 
       - name: Push updated predictions to GitHub Pages
