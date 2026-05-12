@@ -1,0 +1,176 @@
+{
+  "lgb": {
+    "accuracy": 0.5007,
+    "precision": 0.5134,
+    "recall": 0.5084,
+    "f1": 0.5109,
+    "roc_auc": 0.501,
+    "log_loss": 0.7094,
+    "confusion_matrix": [
+      [
+        12841,
+        13231
+      ],
+      [
+        13499,
+        13959
+      ]
+    ],
+    "model": "LightGBM"
+  },
+  "rf": {
+    "accuracy": 0.5031,
+    "precision": 0.5137,
+    "recall": 0.5863,
+    "f1": 0.5476,
+    "roc_auc": 0.5009,
+    "log_loss": 0.6977,
+    "confusion_matrix": [
+      [
+        10832,
+        15240
+      ],
+      [
+        11359,
+        16099
+      ]
+    ],
+    "model": "RandomForest",
+    "feature_importances": {
+      "ret_10": 0.03654434547941422,
+      "ret_5": 0.03603788889039956,
+      "ret_1": 0.035094110393284875,
+      "ret_3": 0.035060802691325034,
+      "ret_2": 0.03499017824621499,
+      "vol_chg": 0.03427593961813369,
+      "vol_ma_rat": 0.03418884613022479,
+      "obv_ret": 0.03380065610299695,
+      "lower_wick": 0.03349906259678203,
+      "upper_wick": 0.033438214131597664,
+      "mom5": 0.03217224962969491,
+      "hl_spread": 0.032003073052554475,
+      "body": 0.03198739446376293,
+      "vol_ratio": 0.031656289360640015,
+      "mom20": 0.03032827731040636,
+      "atr_pct": 0.030172371577890805,
+      "mom10": 0.030025456624634374,
+      "vol20": 0.029768573911056008,
+      "vol5": 0.029676261698845404,
+      "willr": 0.029601616352188834,
+      "bb_w": 0.029000783144543563,
+      "stoch_rsi": 0.028082508179412095,
+      "ma5_20": 0.027526626975307188,
+      "ma10_50": 0.02732206249510397,
+      "bb_pct": 0.026396839496994496,
+      "macd_hist": 0.02630673044484406,
+      "rsi": 0.02624337055216984,
+      "p_ma20": 0.024004495625625306,
+      "macd_sig": 0.02341567655537846,
+      "macd": 0.022718644336476305,
+      "atr": 0.021528462957387386,
+      "ma50": 0.016619043520309965,
+      "ma5": 0.015586178012108853,
+      "ma20": 0.015540143420535729,
+      "ma10": 0.015386732766438493,
+      "sent_cnt": 9.325531649633724e-08,
+      "sent_mean": 0.0,
+      "sent_std": 0.0,
+      "sent_pos_ratio": 0.0,
+      "sent_neg_ratio": 0.0,
+      "sent_momentum": 0.0,
+      "sent_vol": 0.0
+    }
+  },
+  "gb": {
+    "accuracy": 0.5047,
+    "precision": 0.5134,
+    "recall": 0.6604,
+    "f1": 0.5777,
+    "roc_auc": 0.501,
+    "log_loss": 0.7003,
+    "confusion_matrix": [
+      [
+        8884,
+        17188
+      ],
+      [
+        9326,
+        18132
+      ]
+    ],
+    "model": "GradientBoosting"
+  },
+  "ensemble": {
+    "accuracy": 0.5034,
+    "precision": 0.5139,
+    "recall": 0.5873,
+    "f1": 0.5482,
+    "roc_auc": 0.501,
+    "log_loss": 0.6991,
+    "confusion_matrix": [
+      [
+        10819,
+        15253
+      ],
+      [
+        11332,
+        16126
+      ]
+    ],
+    "model": "Ensemble",
+    "weights": {
+      "LightGBM": 0.333,
+      "RandomForest": 0.333,
+      "GradientBoosting": 0.333
+    }
+  },
+  "n_rows": 582826,
+  "tickers": 487,
+  "trained_date": "2026-05-12",
+  "feature_cols": [
+    "ret_1",
+    "ret_2",
+    "ret_3",
+    "ret_5",
+    "ret_10",
+    "ma5",
+    "ma10",
+    "ma20",
+    "ma50",
+    "ma5_20",
+    "ma10_50",
+    "p_ma20",
+    "vol5",
+    "vol20",
+    "vol_ratio",
+    "mom5",
+    "mom10",
+    "mom20",
+    "rsi",
+    "stoch_rsi",
+    "macd",
+    "macd_sig",
+    "macd_hist",
+    "bb_w",
+    "bb_pct",
+    "atr",
+    "atr_pct",
+    "willr",
+    "vol_chg",
+    "vol_ma_rat",
+    "obv_ret",
+    "hl_spread",
+    "body",
+    "upper_wick",
+    "lower_wick",
+    "sent_mean",
+    "sent_std",
+    "sent_pos_ratio",
+    "sent_neg_ratio",
+    "sent_cnt",
+    "sent_momentum",
+    "sent_vol"
+  ],
+  "use_news": true,
+  "use_optuna": true
+}
