@@ -12,7 +12,6 @@ jobs:
   predict:
     runs-on: ubuntu-latest
     timeout-minutes: 360       # 6 hours
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -40,6 +39,29 @@ jobs:
           GITHUB_REPO: ${{ github.event.repository.name }}
           INCREMENTAL: "false"
           USE_NEWS: "true"     # FinBERT sentiment enabled (parallel crawl + batch inference)
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: results
+          path: |
+            docs/
+            predictions/
+            models/
+
+  push:
+    needs: predict
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download results
+        uses: actions/download-artifact@v4
+        with:
+          name: results
 
       - name: Push updated predictions to GitHub Pages
         run: |
